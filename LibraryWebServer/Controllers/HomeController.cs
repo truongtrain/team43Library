@@ -17,6 +17,7 @@ namespace LibraryWebServer.Controllers
         // This will only allow one user of the web server at a time (aside from major security concerns).
         private static string user = "";
         private static int card = -1;
+        private Team43LibraryContext db = new Team43LibraryContext();
 
         /// <summary>
         /// Given a Patron name and CardNum, verify that they exist and match in the database.
@@ -32,20 +33,20 @@ namespace LibraryWebServer.Controllers
         {
             // TODO: Fill in. Determine if login is successful or not.
             bool loginSuccessful = false;
+            //Team43LibraryContext db = new Team43LibraryContext();
 
-            // Alan added here
             var query =
                 from p in db.Patrons
                 select p;
 
             foreach (Patrons p in query)
             {
-                if (p.Name.equals(name) && p.CardNum == cardnum)
+                if (p.Name.Equals(name) && p.CardNum == cardnum)
                 {
                     loginSuccessful = true;
                 }
             }
-            // end Alan added
+
 
             if (!loginSuccessful)
             {
@@ -57,6 +58,7 @@ namespace LibraryWebServer.Controllers
                 card = cardnum;
                 return Json(new { success = true });
             }
+            return Json(null);
         }
 
 
@@ -88,26 +90,25 @@ namespace LibraryWebServer.Controllers
 
             // see page 105, lecture 14 for alternature structure
             var query =
-                      from t in db.Titles
-                      join i in db.Inventory on i.ISBN equals t.ISBN into join1   // page 91, lecture 14
-                      from j1 in join1.DefaultIfEmpty() //page 78, lecture 14
-                      join co in db.CheckedOut on co.Serial equals j1.Serial into join2
-                      from j2 in join2.DefaultIfEmpty()
-                      join p in db.Patrons on p.CardNum equals j2.CardNum
-                      select
-                      new Tuple<string, string, string, int, string>(t.ISBN, t.Title, t.Author,
-                      j1 == null ? -1 : j1.Serial,
-                      j2 == null ? -1 : j2.Name); //option 2 page 59, lecture 14, try option 3 if necessary
+                      from titles in db.Titles // Title row from Title Database
+                      join inventory in db.Inventory on titles.Isbn equals inventory.Isbn into title_inventory   // page 91, lecture 14
+                      // getting the titles that are in our inventory
+                      from t_i in title_inventory.DefaultIfEmpty() //page 78, lecture 14
+                      join co in db.CheckedOut on t_i.Serial equals co.Serial into titleInv_checked
+                      from ti_c in titleInv_checked.DefaultIfEmpty()
+                      join patron in db.Patrons on ti_c.CardNum equals patron.CardNum into All
+                      from all in All.DefaultIfEmpty()
 
-            // add patrons
-            //List<titleIventory> tiTable = new List<titleIventory>(); // create titleInventory class
+                      select new
+                      {
+                          isbn=titles.Isbn,
+                          title=titles.Title,
+                          author=titles.Author,
+                          serial = t_i == null ? "no copies" : t_i.Serial.ToString(),
+                          name = all == null ? "" : all.Name
+                      };
+                     
 
-            /*
-            foreach (var ti in query)
-            {
-                tiTable.add(ti);
-            }
-            */
             return Json(query.ToArray());
 
         }
@@ -124,18 +125,26 @@ namespace LibraryWebServer.Controllers
         public ActionResult ListMyBooks()
         {
             var query =
-                     from t in db.Titles
-                     join i in db.Inventory on i.ISBN equals t.ISBN into join1   // page 91, lecture 14
-                     from j1 in join1.DefaultIfEmpty() //page 78, lecture 14
-                     join co in db.CheckedOut on co.Serial equals j1.Serial into join2
-                     from j2 in join2.DefaultIfEmpty()
-                     join p in db.Patrons on p.CardNum equals card
-                     select
-                     new Tuple<string, string, int>(t.Title, t.Author,
-                     j1 == null ? -1 : j1.Serial
-                    ); //option 2 page 59, lecture 14, try option 3 if necessary
+
+                    from patron in db.CheckedOut where patron.CardNum == card
+                    join inventory in db.Inventory on patron.Serial equals inventory.Serial into checkedout_inventory
+                    from j1 in checkedout_inventory.DefaultIfEmpty()
+                    join title in db.Titles on j1.Isbn equals title.Isbn
+                    select
+                    new Tuple<string, string, int>(title.Title, title.Author, (int)j1.Serial);
+            /*from t in db.Titles
+            join i in db.Inventory on t.Isbn equals i.Isbn into join1   // page 91, lecture 14
+            from j1 in join1.DefaultIfEmpty() //page 78, lecture 14
+            join co in db.CheckedOut on j1.Serial equals co.Serial into join2
+            from j2 in join2.DefaultIfEmpty()
+            join p in db.Patrons on card equals p.CardNum
+            select
+            new Tuple<string, string, int>(t.Title, t.Author,
+            j1 == null ? -1 : (int)j1.Serial*/
+            //option 2 page 59, lecture 14, try option 3 if necessary
 
             return Json(query.ToArray());
+            //return Json(null);
         }
 
 
@@ -154,8 +163,8 @@ namespace LibraryWebServer.Controllers
             try
             {
                 CheckedOut co = new CheckedOut();
-                co.CardNum = card;
-                co.Serial = (uint) serial;
+                co.CardNum = (uint)card;
+                co.Serial = (uint)serial;
                 db.CheckedOut.Add(co);
                 db.SaveChanges();
             }
@@ -182,8 +191,8 @@ namespace LibraryWebServer.Controllers
             try
             {
                 CheckedOut co = new CheckedOut();
-                co.CardNum = card;
-                co.Serial = (uint) serial;
+                co.CardNum = (uint)card;
+                co.Serial = (uint)serial;
                 db.CheckedOut.Remove(co);
                 db.SaveChanges();
             }
