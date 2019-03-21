@@ -126,23 +126,21 @@ namespace LibraryWebServer.Controllers
         {
             var query =
 
-                    from patron in db.CheckedOut where patron.CardNum == card
+                    from patron in db.CheckedOut
+                    where patron.CardNum == card
                     join inventory in db.Inventory on patron.Serial equals inventory.Serial into checkedout_inventory
                     from j1 in checkedout_inventory.DefaultIfEmpty()
                     join title in db.Titles on j1.Isbn equals title.Isbn
                     select
-                    new Tuple<string, string, int>(title.Title, title.Author, (int)j1.Serial);
-            /*from t in db.Titles
-            join i in db.Inventory on t.Isbn equals i.Isbn into join1   // page 91, lecture 14
-            from j1 in join1.DefaultIfEmpty() //page 78, lecture 14
-            join co in db.CheckedOut on j1.Serial equals co.Serial into join2
-            from j2 in join2.DefaultIfEmpty()
-            join p in db.Patrons on card equals p.CardNum
-            select
-            new Tuple<string, string, int>(t.Title, t.Author,
-            j1 == null ? -1 : (int)j1.Serial*/
-            //option 2 page 59, lecture 14, try option 3 if necessary
+                    new
+                    {
+                        title = title.Title,
+                        author = title.Author,
+                        serial = j1.Serial.ToString()
+                    };
 
+
+                     //Tuple<string, string, int>(title.Title, title.Author, (int)j1.Serial);
             return Json(query.ToArray());
             //return Json(null);
         }
