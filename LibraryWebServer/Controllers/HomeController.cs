@@ -91,7 +91,7 @@ namespace LibraryWebServer.Controllers
             // see page 105, lecture 14 for alternature structure
             var query =
                       from titles in db.Titles // Title row from Title Database
-                      join inventory in db.Inventory on titles.Isbn equals inventory.Isbn into title_inventory   // page 91, lecture 14
+                      join inventory in db.Inventory on titles.Isbn equals inventory.Isbn into title_inventory  
                       // getting the titles that are in our inventory
                       from t_i in title_inventory.DefaultIfEmpty() //page 78, lecture 14
                       join co in db.CheckedOut on t_i.Serial equals co.Serial into titleInv_checked
@@ -104,7 +104,7 @@ namespace LibraryWebServer.Controllers
                           isbn=titles.Isbn,
                           title=titles.Title,
                           author=titles.Author,
-                          serial = t_i == null ? "no copies" : t_i.Serial.ToString(),
+                          serial=(uint?)t_i.Serial,
                           name = all == null ? "" : all.Name
                       };
                      
@@ -136,13 +136,11 @@ namespace LibraryWebServer.Controllers
                     {
                         title = title.Title,
                         author = title.Author,
-                        serial = j1.Serial.ToString()
+                        serial = (uint)j1.Serial
                     };
 
 
-                     //Tuple<string, string, int>(title.Title, title.Author, (int)j1.Serial);
             return Json(query.ToArray());
-            //return Json(null);
         }
 
 
